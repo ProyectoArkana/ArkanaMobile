@@ -73,3 +73,28 @@ yarn-error.log
 !.yarn/releases
 !.yarn/sdks
 !.yarn/versions
+# Dependencias de Node
+node_modules/
+package-lock.json
+
+# Android
+android/.gradle
+android/build
+android/app/build
+android/app/build.gradle.local
+android/.idea
+*.keystore
+!android/app/debug.keystore
+
+# iOS
+ios/Pods
+ios/build
+*.pbxuser
+*.mode1v3
+
+# Entorno e IDEs
+.env
+.vscode/
+.idea/
+.DS_Store
+*.log
