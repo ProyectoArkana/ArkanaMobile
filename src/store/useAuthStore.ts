@@ -28,26 +28,40 @@ export const useAuthStore = create<AuthState>((set) => ({
     const response = await apiClient.post('/auth/login', { email, password });
     const { user, token } = response.data;
 
-    // Guardar token de forma segura en el almacenamiento cifrado del celular
-    await Keychain.setGenericPassword('jwt_token', token);
+    // Guardamos el token en el Keychain y guardamos el usuario en JSON dentro del password o almacenamiento
+    await Keychain.setGenericPassword(email, token, {
+      service: 'arkana_jwt',
+    });
+    
+    // Opcional: también puedes guardar el usuario en AsyncStorage si prefieres, 
+    // pero para el token aseguramos el servicio:
+    await Keychain.setGenericPassword('user_session', JSON.stringify(user), {
+      service: 'arkana_user',
+    });
 
     set({ user, token, isAuthenticated: true });
   },
 
   logout: async () => {
-    await Keychain.resetGenericPassword();
+    await Keychain.resetGenericPassword({ service: 'arkana_jwt' });
+    await Keychain.resetGenericPassword({ service: 'arkana_user' });
     set({ user: null, token: null, isAuthenticated: false });
   },
 
   checkAuth: async () => {
     try {
-      const credentials = await Keychain.getGenericPassword();
-      if (credentials) {
-        set({ token: credentials.password, isAuthenticated: true, isLoading: false });
+      const tokenCredentials = await Keychain.getGenericPassword({ service: 'arkana_jwt' });
+      const userCredentials = await Keychain.getGenericPassword({ service: 'arkana_user' });
+
+      if (tokenCredentials && userCredentials) {
+        const token = tokenCredentials.password;
+        const user = JSON.parse(userCredentials.password);
+        set({ user, token, isAuthenticated: true, isLoading: false });
       } else {
         set({ isAuthenticated: false, isLoading: false });
       }
-    } catch {
+    } catch (error) {
+      console.log('Error al verificar autenticación:', error);
       set({ isAuthenticated: false, isLoading: false });
     }
   },

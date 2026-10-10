@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import {
-  View,
   Text,
   TextInput,
   TouchableOpacity,
@@ -64,10 +63,11 @@ export const RegisterScreen = () => {
     }
 
     // Cuenta creada: iniciamos sesión con la lógica que ya existe
+    // Cuenta creada: iniciamos sesión con la lógica que ya existe
     try {
       await login(email.trim(), password);
       // AppNavigator cambia solo a "Main" cuando isAuthenticated pasa a true
-    } catch (error: any) {
+    } catch { // <-- Se eliminó (error: any)
       Alert.alert('Cuenta creada', 'Tu cuenta se creó correctamente. Inicia sesión para continuar.');
       navigation.navigate('Login');
     } finally {

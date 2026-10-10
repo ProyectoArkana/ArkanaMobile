@@ -75,14 +75,14 @@ export const ProfileScreen = () => {
   const renderMatch = ({ item }: { item: MatchHistoryItem }) => {
     const won = item.result === 'WIN';
     return (
-      <View style={[styles.matchRow, { borderLeftColor: won ? '#2a9d8f' : '#e63946' }]}>
+      <View style={[styles.matchRow, won ? styles.matchWonBorder : styles.matchLostBorder]}>
         <View>
           <Text style={styles.matchOpponent}>vs {item.opponent_username}</Text>
           <Text style={styles.matchDate}>
             {new Date(item.finished_at).toLocaleDateString('es-MX')}
           </Text>
         </View>
-        <Text style={[styles.matchResult, { color: won ? '#2a9d8f' : '#e63946' }]}>
+        <Text style={[styles.matchResult, won ? styles.matchWonText : styles.matchLostText]}>
           {won ? 'Victoria' : 'Derrota'}
         </Text>
       </View>
@@ -209,4 +209,8 @@ const styles = StyleSheet.create({
     marginTop: 28,
   },
   logoutText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
+  matchWonBorder: { borderLeftColor: '#2a9d8f' },
+  matchLostBorder: { borderLeftColor: '#e63946' },
+  matchWonText: { color: '#2a9d8f' },
+  matchLostText: { color: '#e63946' },
 });
