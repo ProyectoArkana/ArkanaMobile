@@ -3,6 +3,11 @@ export type RootStackParamList = {
   Register: undefined;
   Main: undefined;
   NfcScan: undefined;
+  Matchmaking: undefined;
+  MatchScreen: {
+    matchId: string;
+    opponent: { userId: string | number; username: string };
+  };
 };
 
 export type MainTabParamList = {

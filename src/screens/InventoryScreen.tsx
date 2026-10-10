@@ -9,13 +9,11 @@ import {
   Alert,
   ColorValue,
 } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
-import { apiClient } from '../api/client';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { apiClient } from '../api/client';
 import { RootStackParamList } from '../navigation/types';
 
-const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 const getElementColor = (element: string): ColorValue => {
   switch (element) {
     case 'FUEGO':
@@ -33,9 +31,8 @@ const getElementColor = (element: string): ColorValue => {
   }
 };
 
-interface PhysicalCard {
-  physical_card_id: string;
-  nfc_uid: string;
+// Interfaz actualizada para reflejar la Pokédex en lugar de la carta física exclusiva
+interface CollectedCard {
   card_id: number;
   name: string;
   element: string;
@@ -43,10 +40,14 @@ interface PhysicalCard {
   mana_cost: number;
   attack: number;
   rarity: string;
+  discovered_at: string;
 }
 
 export const InventoryScreen = () => {
-  const [cards, setCards] = useState<PhysicalCard[]>([]);
+  // El Hook de navegación DEBE ir siempre dentro del componente
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  
+  const [cards, setCards] = useState<CollectedCard[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
 
@@ -68,14 +69,13 @@ export const InventoryScreen = () => {
     }
   };
 
-  // Se recarga cada vez que la pestaña recibe el foco
   useFocusEffect(
     useCallback(() => {
       fetchInventory();
     }, []),
   );
 
-  const renderCardItem = ({ item }: { item: PhysicalCard }) => (
+  const renderCardItem = ({ item }: { item: CollectedCard }) => (
     <View style={[styles.cardContainer, { borderColor: getElementColor(item.element) }]}>
       <View style={styles.cardHeader}>
         <Text style={styles.cardName}>{item.name}</Text>
@@ -88,16 +88,19 @@ export const InventoryScreen = () => {
         <Text style={styles.statText}>❤️ HP: {item.hp}</Text>
         <Text style={styles.statText}>🧪 Maná: {item.mana_cost}</Text>
       </View>
-      <Text style={styles.uidText}>NFC: {item.nfc_uid}</Text>
+      {/* Mostramos cuándo fue añadida a la colección en lugar del UID del chip */}
+      <Text style={styles.uidText}>
+        Descubierta: {new Date(item.discovered_at).toLocaleDateString('es-MX')}
+      </Text>
     </View>
   );
 
   return (
     <View style={styles.container}>
       <View style={styles.headerRow}>
-        <Text style={styles.title}>Tus Cartas Reclamadas ({cards.length})</Text>
+        <Text style={styles.title}>Tu Colección ({cards.length})</Text>
         <TouchableOpacity onPress={() => navigation.navigate('NfcScan')} style={styles.logoutButton}>
-        <Text style={styles.logoutText}>+ Carta</Text>
+          <Text style={styles.logoutText}>+ Carta</Text>
         </TouchableOpacity>
       </View>
 
@@ -106,13 +109,14 @@ export const InventoryScreen = () => {
       ) : (
         <FlatList
           data={cards}
-          keyExtractor={(item) => item.physical_card_id}
+          // El ID único ahora es el card_id convertido a texto
+          keyExtractor={(item) => item.card_id.toString()}
           renderItem={renderCardItem}
           refreshing={refreshing}
           onRefresh={() => fetchInventory(true)}
           contentContainerStyle={styles.listContent}
           ListEmptyComponent={
-            <Text style={styles.emptyText}>No has escaneado tarjetas NFC aún.</Text>
+            <Text style={styles.emptyText}>Aún no has registrado ninguna carta en tu colección.</Text>
           }
         />
       )}

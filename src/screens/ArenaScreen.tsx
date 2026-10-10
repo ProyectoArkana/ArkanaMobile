@@ -1,10 +1,16 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../navigation/types';
 
 export const ArenaScreen = () => {
+  // Inicializamos la navegación con el tipado estricto de tus rutas
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+
   const handleStartMatch = () => {
-    // TODO: conectar con matchmaking-service y luego pasar a la fase de escaneo
-    Alert.alert('Próximamente', 'El matchmaking se conectará cuando el servicio esté listo.');
+    console.log('⚔️ Botón Iniciar Partida presionado. Navegando a Matchmaking...');
+    navigation.navigate('Matchmaking');
   };
 
   return (
@@ -28,13 +34,23 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   title: { color: '#fff', fontSize: 32, fontWeight: 'bold' },
-  subtitle: { color: '#8d99ae', fontSize: 14, textAlign: 'center', marginTop: 8, marginBottom: 40 },
+  subtitle: { 
+    color: '#8d99ae', 
+    fontSize: 14, 
+    textAlign: 'center', 
+    marginTop: 8, 
+    marginBottom: 40 
+  },
   playButton: {
     backgroundColor: '#e94560',
     borderRadius: 14,
     paddingVertical: 20,
     paddingHorizontal: 48,
-    elevation: 6,
+    elevation: 6, // Sombra para Android
+    shadowColor: '#000', // Sombras para iOS
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
   },
   playText: { color: '#fff', fontSize: 20, fontWeight: 'bold' },
 });

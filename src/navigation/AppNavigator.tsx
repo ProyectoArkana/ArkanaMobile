@@ -11,6 +11,8 @@ import { NfcScanScreen } from '../screens/NfcScanScreen';
 import { InventoryScreen } from '../screens/InventoryScreen';
 import { ArenaScreen } from '../screens/ArenaScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
+import { MatchmakingScreen } from '../screens/MatchmakingScreen';
+import { MatchScreen } from '../screens/MatchScreen';
 import { RootStackParamList, MainTabParamList } from './types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -77,7 +79,10 @@ export const AppNavigator = () => {
           </>
         ) : (
           <>
+            {/* El Tab Navigator principal */}
             <Stack.Screen name="Main" component={MainTabNavigator} />
+
+            {/* Pantallas superpuestas (no muestran la barra inferior) */}
             <Stack.Screen
               name="NfcScan"
               component={NfcScanScreen}
@@ -86,6 +91,26 @@ export const AppNavigator = () => {
                 title: 'Registrar carta',
                 headerStyle: { backgroundColor: '#1a1a2e' },
                 headerTintColor: '#fff',
+              }}
+            />
+
+            {/* Búsqueda de oponente */}
+            <Stack.Screen
+              name="Matchmaking"
+              component={MatchmakingScreen}
+              options={{
+                headerShown: false, // Sin header para que se vea inmersiva
+                animation: 'fade', // Transición suave al entrar
+              }}
+            />
+
+            {/* Tablero de la partida (se abre al encontrar oponente) */}
+            <Stack.Screen
+              name="MatchScreen"
+              component={MatchScreen}
+              options={{
+                headerShown: false,
+                gestureEnabled: false, // Evita salir de la partida con el gesto atrás
               }}
             />
           </>
