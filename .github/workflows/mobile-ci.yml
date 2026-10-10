@@ -1,0 +1,50 @@
+﻿name: ArkanaMobile CI
+
+on:
+  push:
+    branches:
+      - ci/pruebas-mobile
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+  test:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Ejecutar pruebas con cobertura
+        run: npm test -- --ci --coverage
+
+      - name: Subir cobertura móvil
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cobertura-mobile
+          path: coverage/
+          if-no-files-found: warn
