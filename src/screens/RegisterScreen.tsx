@@ -12,17 +12,18 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { apiClient } from '../api/client';
+import { errorMessage } from '../api/errors';
 import { useAuthStore } from '../store/useAuthStore';
 import { RootStackParamList } from '../navigation/types';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Register'>;
 
+const USERNAME_REGEX = /^[A-Za-z0-9_]{3,30}$/;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export const RegisterScreen = () => {
   const navigation = useNavigation<Nav>();
-  const login = useAuthStore((state) => state.login);
+  const register = useAuthStore((state) => state.register);
 
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -31,7 +32,7 @@ export const RegisterScreen = () => {
   const [submitting, setSubmitting] = useState(false);
 
   const validate = (): string | null => {
-    if (username.trim().length < 3) return 'El nombre de usuario debe tener al menos 3 caracteres.';
+    if (!USERNAME_REGEX.test(username.trim())) return 'El usuario debe tener de 3 a 30 caracteres (letras, números o guion bajo).';
     if (!EMAIL_REGEX.test(email.trim())) return 'Ingresa un correo válido.';
     if (password.length < 6) return 'La contraseña debe tener al menos 6 caracteres.';
     if (password !== confirmPassword) return 'Las contraseñas no coinciden.';
@@ -47,29 +48,11 @@ export const RegisterScreen = () => {
 
     try {
       setSubmitting(true);
-      await apiClient.post('/auth/register', {
-        username: username.trim(),
-        email: email.trim(),
-        password,
-      });
-    } catch (error: any) {
-      console.error('Error en registro:', error);
-      Alert.alert(
-        'Error',
-        error?.response?.data?.message ?? 'No se pudo crear la cuenta.',
-      );
-      setSubmitting(false);
-      return;
-    }
-
-    // Cuenta creada: iniciamos sesión con la lógica que ya existe
-    // Cuenta creada: iniciamos sesión con la lógica que ya existe
-    try {
-      await login(email.trim(), password);
+      // El backend devuelve el token al registrar: queda con la sesión iniciada
+      await register(username.trim(), email.trim(), password);
       // AppNavigator cambia solo a "Main" cuando isAuthenticated pasa a true
-    } catch { // <-- Se eliminó (error: any)
-      Alert.alert('Cuenta creada', 'Tu cuenta se creó correctamente. Inicia sesión para continuar.');
-      navigation.navigate('Login');
+    } catch (error: any) {
+      Alert.alert('Error', errorMessage(error, 'No se pudo crear la cuenta.'));
     } finally {
       setSubmitting(false);
     }

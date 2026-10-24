@@ -10,7 +10,6 @@ import {
 } from 'react-native';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useAuthStore } from '../store/useAuthStore';
 import { RootStackParamList } from '../navigation/types';
 import { useMatchSocket } from '../hooks/useMatchSocket';
 import { PicksPhase } from './match/PickPhase';
@@ -20,12 +19,9 @@ export const MatchScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<RouteProp<RootStackParamList, 'MatchScreen'>>();
   const { matchId, opponent } = route.params;
-  const user = useAuthStore((state) => state.user);
 
-  const { view, connected, fatalError, error, clearError, submitPicks, sendAction, forfeit } = useMatchSocket(
-    matchId,
-    user?.username ?? 'Jugador',
-  );
+  const { view, connected, fatalError, error, clearError, submitPicks, sendAction, forfeit } =
+    useMatchSocket(matchId);
 
   const opponentName = view?.opponent?.username ?? opponent.username;
 

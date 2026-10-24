@@ -8,7 +8,7 @@ import { useAuthStore } from '../store/useAuthStore';
 import { LoginScreen } from '../screens/LoginScreen';
 import { RegisterScreen } from '../screens/RegisterScreen';
 import { NfcScanScreen } from '../screens/NfcScanScreen';
-import { InventoryScreen } from '../screens/InventoryScreen';
+import { GalleryScreen } from '../screens/GalleryScreen';
 import { ArenaScreen } from '../screens/ArenaScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
 import { MatchmakingScreen } from '../screens/MatchmakingScreen';
@@ -20,7 +20,7 @@ const Tab = createBottomTabNavigator<MainTabParamList>();
 
 const tabIcon = (emoji: string) => () => <Text style={styles.tabIcon}>{emoji}</Text>;
 
-// Pestañas inferiores: Colección (izq) | Arena (centro) | Perfil (der)
+// Pestañas inferiores: Galería (izq) | Arena (centro) | Perfil (der)
 function MainTabNavigator() {
   return (
     <Tab.Navigator
@@ -34,9 +34,9 @@ function MainTabNavigator() {
       }}
     >
       <Tab.Screen
-        name="Inventory"
-        component={InventoryScreen}
-        options={{ title: 'Mi Inventario', tabBarLabel: 'Colección', tabBarIcon: tabIcon('🃏') }}
+        name="Gallery"
+        component={GalleryScreen}
+        options={{ title: 'Mi Galería', tabBarLabel: 'Galería', tabBarIcon: tabIcon('🃏') }}
       />
       <Tab.Screen
         name="Arena"
@@ -88,7 +88,7 @@ export const AppNavigator = () => {
               component={NfcScanScreen}
               options={{
                 headerShown: true,
-                title: 'Registrar carta',
+                title: 'Escanear carta',
                 headerStyle: { backgroundColor: '#1a1a2e' },
                 headerTintColor: '#fff',
               }}

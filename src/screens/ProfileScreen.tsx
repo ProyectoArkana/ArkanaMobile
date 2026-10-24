@@ -2,7 +2,6 @@ import React, { useCallback, useState } from 'react';
 import {
   View,
   Text,
-  Image,
   FlatList,
   StyleSheet,
   ActivityIndicator,
@@ -11,13 +10,12 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { apiClient } from '../api/client';
+import { errorMessage } from '../api/errors';
 import { useAuthStore } from '../store/useAuthStore';
 
 interface UserProfile {
   username: string;
   email: string;
-  avatar_url?: string | null;
-  trophies: number;
   wins: number;
   losses: number;
 }
@@ -26,7 +24,7 @@ interface MatchHistoryItem {
   id: string;
   opponent_username: string;
   result: 'WIN' | 'LOSS';
-  finished_at: string;
+  played_at: string;
 }
 
 export const ProfileScreen = () => {
@@ -44,15 +42,15 @@ export const ProfileScreen = () => {
         setLoading(true);
       }
 
-      // Consumimos el endpoint real de nuestro user-service (/api/users/profile)
-      const profileRes = await apiClient.get('/users/profile');
+      // user-service (vía gateway): perfil con victorias/derrotas e historial de resultados
+      const [profileRes, historyRes] = await Promise.all([
+        apiClient.get('/users/me'),
+        apiClient.get('/users/me/history', { params: { limit: 20 } }),
+      ]);
       setProfile(profileRes.data);
-
-      // Dejamos el historial en vacío temporalmente hasta programar el módulo de partidas
-      setMatches([]);
+      setMatches(historyRes.data);
     } catch (error: any) {
-      console.error('Error cargando perfil:', error);
-      Alert.alert('Error', 'No se pudo obtener tu perfil.');
+      Alert.alert('Error', errorMessage(error, 'No se pudo obtener tu perfil.'));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -79,7 +77,7 @@ export const ProfileScreen = () => {
         <View>
           <Text style={styles.matchOpponent}>vs {item.opponent_username}</Text>
           <Text style={styles.matchDate}>
-            {new Date(item.finished_at).toLocaleDateString('es-MX')}
+            {new Date(item.played_at).toLocaleDateString('es-MX')}
           </Text>
         </View>
         <Text style={[styles.matchResult, won ? styles.matchWonText : styles.matchLostText]}>
@@ -97,24 +95,16 @@ export const ProfileScreen = () => {
     return (
       <View>
         <View style={styles.profileHeader}>
-          {profile.avatar_url ? (
-            <Image source={{ uri: profile.avatar_url }} style={styles.avatar} />
-          ) : (
-            <View style={[styles.avatar, styles.avatarFallback]}>
-              <Text style={styles.avatarInitial}>
-                {profile.username ? profile.username.charAt(0).toUpperCase() : 'U'}
-              </Text>
-            </View>
-          )}
+          <View style={[styles.avatar, styles.avatarFallback]}>
+            <Text style={styles.avatarInitial}>
+              {profile.username ? profile.username.charAt(0).toUpperCase() : 'U'}
+            </Text>
+          </View>
           <Text style={styles.username}>{profile.username}</Text>
           <Text style={styles.email}>{profile.email}</Text>
         </View>
 
         <View style={styles.statsRow}>
-          <View style={styles.statBox}>
-            <Text style={styles.statValue}>🏆 {profile.trophies || 0}</Text>
-            <Text style={styles.statLabel}>Trofeos</Text>
-          </View>
           <View style={styles.statBox}>
             <Text style={styles.statValue}>{profile.wins || 0}</Text>
             <Text style={styles.statLabel}>Victorias</Text>

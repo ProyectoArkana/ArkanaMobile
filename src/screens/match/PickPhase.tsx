@@ -9,48 +9,34 @@ import {
   View,
 } from 'react-native';
 import { apiClient } from '../../api/client';
-import { CardLike, CardView } from '../../components/CardView';
+import { errorMessage } from '../../api/errors';
+import { CardLike, CardView, fromCatalog } from '../../components/CardView';
 import { cancelScan, normalizeUid, readTagUid } from '../../services/nfcReader';
-import { InventoryCard, MatchView } from '../../types/match';
+import { CatalogCard } from '../../types/cards';
+import { MatchView } from '../../types/match';
 
 interface Props {
   view: MatchView;
   opponentName: string;
   errorKey: number;
-  onSubmit: (nfcUids: string[]) => void;
+  onSubmit: (nfcIds: string[]) => void;
   onLeave: () => void;
 }
 
-const toCardLike = (c: InventoryCard): CardLike => ({
-  name: c.name,
-  element: String(c.element).toUpperCase(),
-  hp: Number(c.hp),
-  maxHp: Number(c.hp),
-  attack: Number(c.attack),
-  manaCost: Number(c.mana_cost),
-});
+// Una carta ya escaneada y validada por el servidor (el chip existe y es una carta real)
+interface Pick {
+  nfcId: string;
+  card: CardLike;
+}
 
 export const PicksPhase = ({ view, opponentName, errorKey, onSubmit, onLeave }: Props) => {
   const deckSize = view.deckSize;
-  const [inventory, setInventory] = useState<InventoryCard[]>([]);
-  const [loadingInventory, setLoadingInventory] = useState(true);
-  const [picks, setPicks] = useState<InventoryCard[]>([]);
+  const [picks, setPicks] = useState<Pick[]>([]);
   const [scanning, setScanning] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const cancelledRef = useRef(false);
 
   useEffect(() => {
-    (async () => {
-      try {
-        const response = await apiClient.get('/cards/inventory');
-        setInventory(response.data);
-      } catch (error) {
-        console.error('Error cargando inventario:', error);
-        Alert.alert('Error', 'No se pudo cargar tu colección.');
-      } finally {
-        setLoadingInventory(false);
-      }
-    })();
     return () => {
       cancelScan();
     };
@@ -61,32 +47,28 @@ export const PicksPhase = ({ view, opponentName, errorKey, onSubmit, onLeave }: 
     if (errorKey) setSubmitting(false);
   }, [errorKey]);
 
+  // No hay "dueño": cualquier carta real sirve, también la que te prestaron.
+  // El servidor valida el chip, nos devuelve sus atributos y la desbloquea en tu galería.
   const handleScan = async () => {
     if (picks.length >= deckSize) {
-      Alert.alert('Mazo completo', `Solo puedes usar ${deckSize} cartas en la partida.`);
+      Alert.alert('Equipo completo', `Solo puedes usar ${deckSize} cartas en la partida.`);
       return;
     }
     cancelledRef.current = false;
     setScanning(true);
     try {
-      const uid = normalizeUid(await readTagUid());
-      const card = inventory.find((c) => normalizeUid(c.nfc_uid) === uid);
+      const nfcId = normalizeUid(await readTagUid());
 
-      if (!card) {
-        Alert.alert(
-          'Tarjeta no reconocida',
-          'Esta tarjeta no está en tu colección. Regístrala primero en la pestaña Colección.',
-        );
+      if (picks.some((p) => p.nfcId === nfcId)) {
+        Alert.alert('Carta repetida', 'Esa carta física ya está en tu equipo.');
         return;
       }
-      if (picks.some((p) => p.physical_card_id === card.physical_card_id)) {
-        Alert.alert('Carta repetida', `${card.name} ya está en tu selección.`);
-        return;
-      }
-      setPicks((prev) => [...prev, card]);
+
+      const { data } = await apiClient.post<{ card: CatalogCard }>('/cards/scan', { nfc_id: nfcId });
+      setPicks((prev) => [...prev, { nfcId, card: fromCatalog(data.card) }]);
     } catch (error: any) {
       if (!cancelledRef.current) {
-        Alert.alert('No se pudo leer la tarjeta', error?.message ?? 'Inténtalo de nuevo.');
+        Alert.alert('No se pudo usar la tarjeta', errorMessage(error, error?.message ?? 'Inténtalo de nuevo.'));
       }
     } finally {
       setScanning(false);
@@ -98,13 +80,13 @@ export const PicksPhase = ({ view, opponentName, errorKey, onSubmit, onLeave }: 
     await cancelScan();
   };
 
-  const removePick = (id: string) => {
-    setPicks((prev) => prev.filter((p) => p.physical_card_id !== id));
+  const removePick = (nfcId: string) => {
+    setPicks((prev) => prev.filter((p) => p.nfcId !== nfcId));
   };
 
   const handleSubmit = () => {
     setSubmitting(true);
-    onSubmit(picks.map((p) => normalizeUid(p.nfc_uid)));
+    onSubmit(picks.map((p) => p.nfcId));
   };
 
   /* Ya confirmaste: esperando al rival */
@@ -115,8 +97,8 @@ export const PicksPhase = ({ view, opponentName, errorKey, onSubmit, onLeave }: 
         <ActivityIndicator size="large" color="#e94560" style={styles.loader} />
         <Text style={styles.subtitle}>Esperando a que {opponentName} elija sus cartas...</Text>
         <View style={styles.waitingList}>
-          {(view.me.cards ?? []).map((c) => (
-            <CardView key={c.physicalCardId} card={c} compact style={styles.waitingCard} />
+          {(view.me.cards ?? []).map((c, i) => (
+            <CardView key={`${c.cardId}-${i}`} card={c} compact style={styles.waitingCard} />
           ))}
         </View>
         <TouchableOpacity onPress={onLeave} style={styles.leaveBtn}>
@@ -136,9 +118,7 @@ export const PicksPhase = ({ view, opponentName, errorKey, onSubmit, onLeave }: 
         {view.opponent?.picksReady ? '  ·  ✅ ya eligió' : '  ·  eligiendo...'}
       </Text>
 
-      {loadingInventory ? (
-        <ActivityIndicator size="large" color="#e94560" style={styles.loader} />
-      ) : (
+      {
         <>
           {Array.from({ length: deckSize }).map((_, i) => {
             const pick = picks[i];
@@ -150,10 +130,10 @@ export const PicksPhase = ({ view, opponentName, errorKey, onSubmit, onLeave }: 
               );
             }
             return (
-              <View key={pick.physical_card_id} style={styles.pickRow}>
+              <View key={pick.nfcId} style={styles.pickRow}>
                 <Text style={styles.slotNumber}>{i + 1}</Text>
-                <CardView card={toCardLike(pick)} compact style={styles.pickCard} />
-                <TouchableOpacity onPress={() => removePick(pick.physical_card_id)} style={styles.removeBtn}>
+                <CardView card={pick.card} compact style={styles.pickCard} />
+                <TouchableOpacity onPress={() => removePick(pick.nfcId)} style={styles.removeBtn}>
                   <Text style={styles.removeText}>✕</Text>
                 </TouchableOpacity>
               </View>
@@ -191,7 +171,7 @@ export const PicksPhase = ({ view, opponentName, errorKey, onSubmit, onLeave }: 
             )}
           </TouchableOpacity>
         </>
-      )}
+      }
 
       <TouchableOpacity onPress={onLeave} style={styles.leaveBtn}>
         <Text style={styles.leaveText}>Abandonar partida</Text>

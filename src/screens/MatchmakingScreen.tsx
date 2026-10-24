@@ -5,13 +5,13 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { io, Socket } from 'socket.io-client';
 import { useAuthStore } from '../store/useAuthStore';
 import { RootStackParamList } from '../navigation/types';
-import { SOCKET_URL } from '../api/config';
+import { QUEUE_SOCKET_PATH, SOCKET_ORIGIN } from '../api/config';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Matchmaking'>;
 
 interface MatchFoundPayload {
   matchId: string;
-  opponent: { userId: string | number; username: string };
+  opponent: { userId: string; username: string };
 }
 
 export const MatchmakingScreen = () => {
@@ -21,24 +21,29 @@ export const MatchmakingScreen = () => {
   const socketRef = useRef<Socket | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const userId = user?.id;
   const username = user?.username;
 
   useEffect(() => {
-    if (userId === undefined || userId === null || !username) {
+    // La identidad la valida el servidor con el JWT; la app ya no manda userId/username
+    const token = useAuthStore.getState().token;
+    if (!token) {
       setStatus('No hay sesión de usuario.\nCierra sesión y vuelve a iniciar.');
       return;
     }
 
-    console.log('🔎 Matchmaking → conectando a', SOCKET_URL, 'como', username);
-    const socket = io(SOCKET_URL, { timeout: 5000, reconnectionAttempts: 5 });
+    const socket = io(SOCKET_ORIGIN, {
+      path: QUEUE_SOCKET_PATH,
+      auth: { token },
+      transports: ['websocket'],
+      timeout: 5000,
+      reconnectionAttempts: 5,
+    });
     socketRef.current = socket;
 
     // Conexión exitosa (también se dispara tras una reconexión)
     socket.on('connect', () => {
-      console.log('✅ Conectado al servidor de Matchmaking:', socket.id);
       setStatus('Buscando oponente...');
-      socket.emit('join_queue', { userId, username });
+      socket.emit('join_queue');
     });
 
     // El servidor confirma que estamos en la cola
@@ -54,7 +59,6 @@ export const MatchmakingScreen = () => {
 
     // ¡Oponente encontrado!
     socket.on('match_found', (data: MatchFoundPayload) => {
-      console.log('⚔️ Partida encontrada:', data.matchId);
       setStatus(`¡Partida encontrada!\nVS ${data.opponent.username}`);
       socket.disconnect();
 
@@ -67,12 +71,11 @@ export const MatchmakingScreen = () => {
     });
 
     socket.on('connect_error', (error) => {
-      console.log('❌ connect_error:', error.message);
-      setStatus(`No se pudo conectar al servidor.\n${error.message}`);
-    });
-
-    socket.on('disconnect', (reason) => {
-      console.log('⚠️ Socket desconectado:', reason);
+      setStatus(
+        error.message === 'unauthorized'
+          ? 'Sesión inválida.\nCierra sesión y vuelve a iniciar.'
+          : `No se pudo conectar al servidor.\n${error.message}`,
+      );
     });
 
     // Limpieza: al salir de la pantalla se cancela la búsqueda
@@ -82,7 +85,7 @@ export const MatchmakingScreen = () => {
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [userId, username, navigation]);
+  }, [username, navigation]);
 
   const handleCancel = () => {
     socketRef.current?.disconnect();
@@ -94,7 +97,7 @@ export const MatchmakingScreen = () => {
       <View style={styles.radarContainer}>
         <ActivityIndicator size="large" color="#e94560" />
         <Text style={styles.statusText}>{status}</Text>
-        <Text style={styles.serverText}>Servidor: {SOCKET_URL}</Text>
+        <Text style={styles.serverText}>Servidor: {SOCKET_ORIGIN}</Text>
       </View>
 
       <TouchableOpacity style={styles.cancelButton} onPress={handleCancel}>

@@ -13,6 +13,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuthStore } from '../store/useAuthStore';
 import { RootStackParamList } from '../navigation/types';
+import { errorMessage } from '../api/errors';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Login'>;
 
@@ -34,7 +35,7 @@ export const LoginScreen = () => {
       await login(email.trim(), password);
       // AppNavigator cambia solo a "Main" cuando isAuthenticated pasa a true
     } catch (error: any) {
-      Alert.alert('Error', error?.response?.data?.message ?? 'No se pudo iniciar sesión.');
+      Alert.alert('Error', errorMessage(error, 'No se pudo iniciar sesión.'));
     } finally {
       setSubmitting(false);
     }

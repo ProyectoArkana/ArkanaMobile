@@ -87,11 +87,12 @@ export const BattlePhase = ({ view, opponentName, onAction, onForfeit, onExit }:
   const myActive = myCards[me.activeIndex];
   const foeActive = foeCards[foe.activeIndex];
 
-  const myTurn = view.turn === me.userId;
-  const mustSwitch = !over && view.pendingSwitch === me.userId;
-  const foeMustSwitch = !over && view.pendingSwitch === foe.userId;
-  const canAct = !over && myTurn && !mustSwitch;
-  const canAttack = canAct && me.mana >= myActive.manaCost;
+  // Los dos jugadores eligen a la vez cada turno; el servidor resuelve cuando ambos eligieron
+  const mustSwitch = !over && view.phase === 'REPLACING' && view.pendingSwitch.includes(me.userId);
+  const foeMustSwitch = !over && view.phase === 'REPLACING' && view.pendingSwitch.includes(foe.userId);
+  const canChoose = !over && view.phase === 'CHOOSING' && !me.hasChosen;
+  const canAttack = canChoose && myActive.mana >= myActive.skillManaCost;
+  const canShield = canChoose && me.shields > 0;
 
   const myBench = myCards.map((card, index) => ({ card, index })).filter((x) => x.index !== me.activeIndex);
   const foeBench = foeCards.map((card, index) => ({ card, index })).filter((x) => x.index !== foe.activeIndex);
@@ -100,15 +101,16 @@ export const BattlePhase = ({ view, opponentName, onAction, onForfeit, onExit }:
   if (over) banner = 'La partida terminó';
   else if (mustSwitch) banner = '💥 Tu carta cayó: elige otra de tu banca';
   else if (foeMustSwitch) banner = `${foe.username} está eligiendo su reemplazo...`;
-  else if (myTurn) banner = '🟢 Tu turno';
-  else banner = `⏳ Turno de ${foe.username}`;
+  else if (me.hasChosen) banner = `⏳ Esperando a ${foe.username}...`;
+  else if (foe.hasChosen) banner = `🟢 Elige tu acción (${foe.username} ya eligió)`;
+  else banner = `🟢 Turno ${view.turnNumber}: elige tu acción`;
 
   const handleBenchPress = (index: number) => {
     if (mustSwitch) {
       onAction({ type: 'switch', toIndex: index });
       return;
     }
-    Alert.alert('Cambiar de carta', `¿Enviar a ${myCards[index].name}? Usarás tu turno.`, [
+    Alert.alert('Cambiar de carta', `¿Enviar a ${myCards[index].name}? Será tu acción de este turno.`, [
       { text: 'Cancelar', style: 'cancel' },
       { text: 'Cambiar', onPress: () => onAction({ type: 'switch', toIndex: index }) },
     ]);
@@ -128,15 +130,15 @@ export const BattlePhase = ({ view, opponentName, onAction, onForfeit, onExit }:
         <View style={styles.sideHeader}>
           <Text style={styles.playerName}>{foe.username}</Text>
           <Text style={styles.mana}>
-            🧪 {foe.mana}/{view.maxMana}
+            🛡️ {foe.shields}/{view.maxShields}
           </Text>
         </View>
         {foe.connected === false && !over && (
           <Text style={styles.warn}>Rival desconectado, esperando reconexión...</Text>
         )}
         <View style={styles.benchRow}>
-          {foeBench.map(({ card }) => (
-            <CardView key={card.physicalCardId} card={card} compact style={styles.benchCard} />
+          {foeBench.map(({ card, index }) => (
+            <CardView key={index} card={card} compact style={styles.benchCard} />
           ))}
         </View>
         <CardView card={foeActive} />
@@ -156,17 +158,17 @@ export const BattlePhase = ({ view, opponentName, onAction, onForfeit, onExit }:
         <View style={styles.sideHeader}>
           <Text style={styles.playerName}>{me.username} (tú)</Text>
           <Text style={styles.mana}>
-            🧪 {me.mana}/{view.maxMana}
+            🛡️ {me.shields}/{view.maxShields} · 🧪 {myActive.mana}/{myActive.maxMana}
           </Text>
         </View>
 
         <Text style={styles.benchLabel}>Tu banca</Text>
         <View style={styles.benchRow}>
           {myBench.map(({ card, index }) => {
-            const enabled = !over && (mustSwitch || canAct) && !card.fainted;
+            const enabled = (mustSwitch || canChoose) && !card.fainted;
             return (
               <CardView
-                key={card.physicalCardId}
+                key={index}
                 card={card}
                 compact
                 style={styles.benchCard}
@@ -184,19 +186,23 @@ export const BattlePhase = ({ view, opponentName, onAction, onForfeit, onExit }:
               disabled={!canAttack}
               onPress={() => onAction({ type: 'attack' })}
             >
-              <Text style={styles.attackText}>⚔️ Atacar (🧪 {myActive.manaCost})</Text>
+              <Text style={styles.attackText}>⚔️ {myActive.skillName}</Text>
+              <Text style={styles.attackSub}>🧪 {myActive.skillManaCost} maná</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.waitBtn, !canAct && styles.btnDisabled]}
-              disabled={!canAct}
-              onPress={() => onAction({ type: 'pass' })}
+              style={[styles.shieldBtn, !canShield && styles.btnDisabled]}
+              disabled={!canShield}
+              onPress={() => onAction({ type: 'shield' })}
             >
-              <Text style={styles.waitBtnText}>⏳ Esperar</Text>
+              <Text style={styles.shieldText}>🛡️ Escudo</Text>
+              <Text style={styles.shieldSub}>quedan {me.shields}</Text>
             </TouchableOpacity>
           </View>
         )}
-        {canAct && !canAttack && (
-          <Text style={styles.hint}>Maná insuficiente para atacar: cambia de carta o espera.</Text>
+        {canChoose && !canAttack && (
+          <Text style={styles.hint}>
+            Maná insuficiente para {myActive.skillName}: usa un escudo o cambia de carta.
+          </Text>
         )}
         {mustSwitch && <Text style={styles.hint}>Toca una carta de tu banca para enviarla al combate.</Text>}
 
@@ -249,16 +255,18 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   attackText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
-  waitBtn: {
+  attackSub: { color: '#ffd6dd', fontSize: 12, marginTop: 2 },
+  shieldBtn: {
     flex: 1,
     backgroundColor: '#16213e',
-    borderWidth: 1,
-    borderColor: '#8d99ae',
+    borderWidth: 2,
+    borderColor: '#457b9d',
     borderRadius: 10,
-    paddingVertical: 16,
+    paddingVertical: 14,
     alignItems: 'center',
   },
-  waitBtnText: { color: '#fff', fontSize: 14, fontWeight: 'bold' },
+  shieldText: { color: '#fff', fontSize: 15, fontWeight: 'bold' },
+  shieldSub: { color: '#a8dadc', fontSize: 12, marginTop: 2 },
   btnDisabled: { opacity: 0.4 },
   hint: { color: '#e9c46a', fontSize: 12, textAlign: 'center', marginTop: 10 },
   forfeitBtn: { marginTop: 22, alignItems: 'center', padding: 8 },

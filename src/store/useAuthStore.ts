@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import * as Keychain from 'react-native-keychain';
-import { apiClient } from '../api/client';
+import { apiClient, configureAuth } from '../api/client';
 
 interface User {
   id: string;
@@ -14,55 +14,72 @@ interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
+  register: (username: string, email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
-  user: null,
-  token: null,
-  isAuthenticated: false,
-  isLoading: true,
+const TOKEN_SERVICE = 'arkana_jwt';
+const USER_SERVICE = 'arkana_user';
 
-  login: async (email, password) => {
-    const response = await apiClient.post('/auth/login', { email, password });
-    const { user, token } = response.data;
-
-    // Guardamos el token en el Keychain y guardamos el usuario en JSON dentro del password o almacenamiento
-    await Keychain.setGenericPassword(email, token, {
-      service: 'arkana_jwt',
-    });
-    
-    // Opcional: también puedes guardar el usuario en AsyncStorage si prefieres, 
-    // pero para el token aseguramos el servicio:
-    await Keychain.setGenericPassword('user_session', JSON.stringify(user), {
-      service: 'arkana_user',
-    });
-
+export const useAuthStore = create<AuthState>((set) => {
+  // JWT stateless: guardamos token y usuario en el Keychain y los dejamos en memoria
+  const startSession = async (user: User, token: string) => {
+    await Keychain.setGenericPassword('token', token, { service: TOKEN_SERVICE });
+    await Keychain.setGenericPassword('user', JSON.stringify(user), { service: USER_SERVICE });
     set({ user, token, isAuthenticated: true });
-  },
+  };
 
-  logout: async () => {
-    await Keychain.resetGenericPassword({ service: 'arkana_jwt' });
-    await Keychain.resetGenericPassword({ service: 'arkana_user' });
-    set({ user: null, token: null, isAuthenticated: false });
-  },
+  return {
+    user: null,
+    token: null,
+    isAuthenticated: false,
+    isLoading: true,
 
-  checkAuth: async () => {
-    try {
-      const tokenCredentials = await Keychain.getGenericPassword({ service: 'arkana_jwt' });
-      const userCredentials = await Keychain.getGenericPassword({ service: 'arkana_user' });
+    login: async (email, password) => {
+      const { data } = await apiClient.post('/auth/login', { email, password });
+      await startSession(data.user, data.token);
+    },
 
-      if (tokenCredentials && userCredentials) {
-        const token = tokenCredentials.password;
-        const user = JSON.parse(userCredentials.password);
-        set({ user, token, isAuthenticated: true, isLoading: false });
-      } else {
+    // El registro ya devuelve el token: no hace falta un segundo login
+    register: async (username, email, password) => {
+      const { data } = await apiClient.post('/auth/register', { username, email, password });
+      await startSession(data.user, data.token);
+    },
+
+    logout: async () => {
+      await Keychain.resetGenericPassword({ service: TOKEN_SERVICE });
+      await Keychain.resetGenericPassword({ service: USER_SERVICE });
+      set({ user: null, token: null, isAuthenticated: false });
+    },
+
+    checkAuth: async () => {
+      try {
+        const tokenCredentials = await Keychain.getGenericPassword({ service: TOKEN_SERVICE });
+        const userCredentials = await Keychain.getGenericPassword({ service: USER_SERVICE });
+
+        if (tokenCredentials && userCredentials) {
+          set({
+            user: JSON.parse(userCredentials.password),
+            token: tokenCredentials.password,
+            isAuthenticated: true,
+            isLoading: false,
+          });
+        } else {
+          set({ isAuthenticated: false, isLoading: false });
+        }
+      } catch {
         set({ isAuthenticated: false, isLoading: false });
       }
-    } catch (error) {
-      console.log('Error al verificar autenticación:', error);
-      set({ isAuthenticated: false, isLoading: false });
-    }
+    },
+  };
+});
+
+// El cliente HTTP lee el token del store (antes lo buscaba en el Keychain sin indicar el
+// "service" con el que se había guardado, así que nunca lo encontraba).
+configureAuth({
+  getToken: () => useAuthStore.getState().token,
+  onUnauthorized: () => {
+    if (useAuthStore.getState().isAuthenticated) useAuthStore.getState().logout();
   },
-}));
+});

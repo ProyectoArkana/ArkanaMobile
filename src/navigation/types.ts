@@ -6,12 +6,12 @@ export type RootStackParamList = {
   Matchmaking: undefined;
   MatchScreen: {
     matchId: string;
-    opponent: { userId: string | number; username: string };
+    opponent: { userId: string; username: string };
   };
 };
 
 export type MainTabParamList = {
-  Inventory: undefined;
+  Gallery: undefined;
   Arena: undefined;
   Profile: undefined;
 };
