@@ -6,15 +6,17 @@ export type RootStackParamList = {
   Matchmaking: undefined;
   MatchScreen: {
     matchId: string;
-    opponent: { userId: string | number; username: string };
+    opponent: { userId: string; username: string };
   };
+  // ARK-011: administración de usuarios (solo rol ADMIN)
   AdminUsers: undefined;
   AdminUserDetail: { userId: string };
   AdminUserCreate: undefined;
 };
 
 export type MainTabParamList = {
-  Inventory: undefined;
+  Gallery: undefined;
+  Search: undefined;
   Arena: undefined;
   Profile: undefined;
 };

@@ -8,16 +8,14 @@ import { useAuthStore } from '../store/useAuthStore';
 import { LoginScreen } from '../screens/LoginScreen';
 import { RegisterScreen } from '../screens/RegisterScreen';
 import { NfcScanScreen } from '../screens/NfcScanScreen';
-import { InventoryScreen } from '../screens/InventoryScreen';
 import { ArenaScreen } from '../screens/ArenaScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
 import { MatchmakingScreen } from '../screens/MatchmakingScreen';
 import { MatchScreen } from '../screens/MatchScreen';
-
+import { CardSearchScreen } from '../screens/CardSearchScreen';
 import { UsersListScreen } from '../screens/admin/UsersListScreen';
 import { UserDetailScreen } from '../screens/admin/UserDetailScreen';
 import { UserFormScreen } from '../screens/admin/UserFormScreen';
-
 import { RootStackParamList, MainTabParamList } from './types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -32,7 +30,7 @@ const adminHeader = {
 
 const tabIcon = (emoji: string) => () => <Text style={styles.tabIcon}>{emoji}</Text>;
 
-// Pestañas inferiores: Colección (izq) | Arena (centro) | Perfil (der)
+// Pestañas inferiores: Galería | Buscar | Arena | Perfil
 function MainTabNavigator() {
   return (
     <Tab.Navigator
@@ -45,10 +43,17 @@ function MainTabNavigator() {
         tabBarInactiveTintColor: '#8d99ae',
       }}
     >
+      {/* 
       <Tab.Screen
-        name="Inventory"
-        component={InventoryScreen}
-        options={{ title: 'Mi Inventario', tabBarLabel: 'Colección', tabBarIcon: tabIcon('🃏') }}
+        name="Gallery"
+        component={GalleryScreen}
+        options={{ title: 'Mi Galería', tabBarLabel: 'Galería', tabBarIcon: tabIcon('🃏') }}
+      />
+      */}
+      <Tab.Screen
+        name="Search"
+        component={CardSearchScreen}
+        options={{ title: 'Buscar cartas', tabBarLabel: 'Buscar', tabBarIcon: tabIcon('🔍') }}
       />
       <Tab.Screen
         name="Arena"
@@ -101,7 +106,7 @@ export const AppNavigator = () => {
               component={NfcScanScreen}
               options={{
                 headerShown: true,
-                title: 'Registrar carta',
+                title: 'Escanear carta',
                 headerStyle: { backgroundColor: '#1a1a2e' },
                 headerTintColor: '#fff',
               }}
@@ -127,7 +132,7 @@ export const AppNavigator = () => {
               }}
             />
 
-            {/* Administracion de usuarios y roles*/}
+            {/* ARK-011: administración de usuarios y roles (el backend también exige rol ADMIN) */}
             {isAdmin && (
               <>
                 <Stack.Screen
