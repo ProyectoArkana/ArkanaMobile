@@ -21,6 +21,10 @@ export const ArenaScreen = () => {
       <TouchableOpacity style={styles.playButton} onPress={handleStartMatch}>
         <Text style={styles.playText}>Iniciar Partida</Text>
       </TouchableOpacity>
+
+      <TouchableOpacity style={styles.deckButton} onPress={() => navigation.navigate('Deck')}>
+        <Text style={styles.deckText}>🃏 Mi mazo</Text>
+      </TouchableOpacity>
     </View>
   );
 };
@@ -53,4 +57,13 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
   },
   playText: { color: '#fff', fontSize: 20, fontWeight: 'bold' },
+  deckButton: {
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: '#e94560',
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 40,
+  },
+  deckText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
 });

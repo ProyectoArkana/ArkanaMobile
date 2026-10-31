@@ -3,16 +3,18 @@ import { ActivityIndicator, View, Text, StyleSheet } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { GalleryScreen } from '../screens/GalleryScreen';
+
 import { useAuthStore } from '../store/useAuthStore';
 import { LoginScreen } from '../screens/LoginScreen';
 import { RegisterScreen } from '../screens/RegisterScreen';
 import { NfcScanScreen } from '../screens/NfcScanScreen';
+import { GalleryScreen } from '../screens/GalleryScreen';
 import { ArenaScreen } from '../screens/ArenaScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
 import { MatchmakingScreen } from '../screens/MatchmakingScreen';
 import { MatchScreen } from '../screens/MatchScreen';
 import { CardSearchScreen } from '../screens/CardSearchScreen';
+import { DeckScreen } from '../screens/DeckScreen';
 import { UsersListScreen } from '../screens/admin/UsersListScreen';
 import { UserDetailScreen } from '../screens/admin/UserDetailScreen';
 import { UserFormScreen } from '../screens/admin/UserFormScreen';
@@ -43,13 +45,11 @@ function MainTabNavigator() {
         tabBarInactiveTintColor: '#8d99ae',
       }}
     >
-      {
       <Tab.Screen
         name="Gallery"
         component={GalleryScreen}
         options={{ title: 'Mi Galería', tabBarLabel: 'Galería', tabBarIcon: tabIcon('🃏') }}
       />
-      }
       <Tab.Screen
         name="Search"
         component={CardSearchScreen}
@@ -129,6 +129,18 @@ export const AppNavigator = () => {
               options={{
                 headerShown: false,
                 gestureEnabled: false, // Evita salir de la partida con el gesto atrás
+              }}
+            />
+
+            {/* ARK-020: seleccionar y validar el mazo activo */}
+            <Stack.Screen
+              name="Deck"
+              component={DeckScreen}
+              options={{
+                headerShown: true,
+                title: 'Mi mazo',
+                headerStyle: { backgroundColor: '#1a1a2e' },
+                headerTintColor: '#fff',
               }}
             />
 

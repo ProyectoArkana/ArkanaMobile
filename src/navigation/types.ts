@@ -4,6 +4,7 @@ export type RootStackParamList = {
   Main: undefined;
   NfcScan: undefined;
   Matchmaking: undefined;
+  Deck: undefined; // ARK-020: mazo activo
   MatchScreen: {
     matchId: string;
     opponent: { userId: string; username: string };
