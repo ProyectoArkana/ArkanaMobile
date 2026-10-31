@@ -3,7 +3,7 @@ import { ActivityIndicator, View, Text, StyleSheet } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-
+import { GalleryScreen } from '../screens/GalleryScreen';
 import { useAuthStore } from '../store/useAuthStore';
 import { LoginScreen } from '../screens/LoginScreen';
 import { RegisterScreen } from '../screens/RegisterScreen';
@@ -43,13 +43,13 @@ function MainTabNavigator() {
         tabBarInactiveTintColor: '#8d99ae',
       }}
     >
-      {/* 
+      {
       <Tab.Screen
         name="Gallery"
         component={GalleryScreen}
         options={{ title: 'Mi Galería', tabBarLabel: 'Galería', tabBarIcon: tabIcon('🃏') }}
       />
-      */}
+      }
       <Tab.Screen
         name="Search"
         component={CardSearchScreen}

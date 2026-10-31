@@ -66,3 +66,19 @@ export const filtersToParams = (f: CardFiltersState): Record<string, string> => 
   if (f.maxDefense) params.max_defense = f.maxDefense;
   return params;
 };
+
+// ARK-016: carta de la colección (todo el catálogo; `unlocked` indica si ya está vinculada a tu cuenta)
+export interface CollectionCard extends CatalogCard {
+  unlocked: boolean;
+  unlocked_at: string | null;
+}
+
+export interface CollectionSummary {
+  total: number;
+  unlocked: number;
+}
+
+export interface CollectionResponse {
+  cards: CollectionCard[];
+  summary: CollectionSummary;
+}
