@@ -8,6 +8,9 @@ export type RootStackParamList = {
     matchId: string;
     opponent: { userId: string | number; username: string };
   };
+  AdminUsers: undefined;
+  AdminUserDetail: { userId: string };
+  AdminUserCreate: undefined;
 };
 
 export type MainTabParamList = {

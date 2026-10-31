@@ -1,11 +1,13 @@
 import { create } from 'zustand';
 import * as Keychain from 'react-native-keychain';
 import { apiClient } from '../api/client';
+import { UserRole } from '../types/users';
 
 interface User {
   id: string;
   email: string;
   username: string;
+  role?: UserRole; //Sesiones guardadas antes del cambio no lo traen; se completa con /users/me
 }
 
 interface AuthState {

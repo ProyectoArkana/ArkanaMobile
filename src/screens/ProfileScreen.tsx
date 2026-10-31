@@ -9,9 +9,11 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { apiClient } from '../api/client';
 import { useAuthStore } from '../store/useAuthStore';
+import { RootStackParamList } from '../navigation/types';
 
 interface UserProfile {
   username: string;
@@ -35,6 +37,8 @@ export const ProfileScreen = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const logout = useAuthStore((state) => state.logout);
+  const isAdmin = useAuthStore((state) => state.user?.role === 'ADMIN');
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   const fetchProfile = async (isRefresh: boolean = false) => {
     try {
@@ -156,9 +160,16 @@ export const ProfileScreen = () => {
           <Text style={styles.emptyText}>Aún no has jugado ninguna partida.</Text>
         }
         ListFooterComponent={
-          <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
-            <Text style={styles.logoutText}>Cerrar sesión</Text>
-          </TouchableOpacity>
+          <View>
+            {isAdmin && (
+              <TouchableOpacity onPress={() => navigation.navigate('AdminUsers')} style={styles.adminButton}>
+                <Text style={styles.adminText}>👥 Administrar usuarios</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
+              <Text style={styles.logoutText}>Cerrar sesión</Text>
+            </TouchableOpacity>
+          </View>
         }
       />
     </View>
@@ -201,6 +212,16 @@ const styles = StyleSheet.create({
   matchDate: { color: '#7f8c8d', fontSize: 12, marginTop: 2 },
   matchResult: { fontSize: 14, fontWeight: 'bold' },
   emptyText: { color: '#8d99ae', textAlign: 'center', marginVertical: 24 },
+  adminButton: {
+    backgroundColor: '#16213e',
+    borderColor: '#e94560',
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 14,
+    alignItems: 'center',
+    marginTop: 28,
+  },
+  adminText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
   logoutButton: {
     backgroundColor: '#e94560',
     borderRadius: 8,

@@ -13,10 +13,22 @@ import { ArenaScreen } from '../screens/ArenaScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
 import { MatchmakingScreen } from '../screens/MatchmakingScreen';
 import { MatchScreen } from '../screens/MatchScreen';
+
+import { UsersListScreen } from '../screens/admin/UsersListScreen';
+import { UserDetailScreen } from '../screens/admin/UserDetailScreen';
+import { UserFormScreen } from '../screens/admin/UserFormScreen';
+
 import { RootStackParamList, MainTabParamList } from './types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<MainTabParamList>();
+
+// Cabecera común de las pantallas de administración
+const adminHeader = {
+  headerShown: true,
+  headerStyle: { backgroundColor: '#1a1a2e' },
+  headerTintColor: '#fff',
+};
 
 const tabIcon = (emoji: string) => () => <Text style={styles.tabIcon}>{emoji}</Text>;
 
@@ -55,6 +67,7 @@ function MainTabNavigator() {
 export const AppNavigator = () => {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const isLoading = useAuthStore((state) => state.isLoading);
+  const isAdmin = useAuthStore((state) => state.user?.role === 'ADMIN');
   const checkAuth = useAuthStore((state) => state.checkAuth);
 
   useEffect(() => {
@@ -113,6 +126,27 @@ export const AppNavigator = () => {
                 gestureEnabled: false, // Evita salir de la partida con el gesto atrás
               }}
             />
+
+            {/* Administracion de usuarios y roles*/}
+            {isAdmin && (
+              <>
+                <Stack.Screen
+                  name="AdminUsers"
+                  component={UsersListScreen}
+                  options={{ ...adminHeader, title: 'Usuarios' }}
+                />
+                <Stack.Screen
+                  name="AdminUserDetail"
+                  component={UserDetailScreen}
+                  options={{ ...adminHeader, title: 'Detalle de usuario' }}
+                />
+                <Stack.Screen
+                  name="AdminUserCreate"
+                  component={UserFormScreen}
+                  options={{ ...adminHeader, title: 'Crear usuario' }}
+                />
+              </>
+            )}
           </>
         )}
       </Stack.Navigator>
