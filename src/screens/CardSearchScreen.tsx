@@ -1,102 +1,124 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, FlatList, StyleSheet, ActivityIndicator } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, FlatList, StyleSheet, Text, TextInput, View } from 'react-native';
 import { apiClient } from '../api/client';
-import { CardView } from '../components/CardView';
+import { parseApiError } from '../api/errors';
+import { CardFilters } from '../components/CardFilters';
+import { CardView, fromCatalog } from '../components/CardView';
 import { useDebouncedValue } from '../hooks/useDebouncedValue';
-import { CatalogCard } from '../types/cards';
+import {
+  CardFiltersState,
+  CatalogCard,
+  EMPTY_FILTERS,
+  countActiveFilters,
+  filtersToParams,
+} from '../types/cards';
 
+// ARK-008 + ARK-009: búsqueda por nombre y filtros (elemento, rareza, ataque, defensa).
+// Sin criterios muestra el catálogo completo.
 export const CardSearchScreen = () => {
   const [query, setQuery] = useState('');
-  const debouncedQuery = useDebouncedValue(query, 350); 
+  const [filters, setFilters] = useState<CardFiltersState>(EMPTY_FILTERS);
   const [cards, setCards] = useState<CatalogCard[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const debouncedName = useDebouncedValue(query.trim(), 350);
+  const debouncedFilters = useDebouncedValue(filters, 350);
+  const hasCriteria = debouncedName !== '' || countActiveFilters(debouncedFilters) > 0;
 
   useEffect(() => {
-    const fetchCards = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        // Si la búsqueda está vacía, trae el catálogo completo
-        const url = debouncedQuery ? `/cards?name=${encodeURIComponent(debouncedQuery)}` : '/cards';
-        const response = await apiClient.get(url);
-        
-        // Ajuste por si el backend devuelve { cards: [...] } o un arreglo directo
-        const data = response.data.cards || response.data;
-        setCards(Array.isArray(data) ? data : []);
-      } catch (err: any) {
-        console.error(err);
-        setError('No se pudieron cargar las cartas. Revisa tu conexión.');
-      } finally {
-        setLoading(false);
-      }
+    // `active` descarta respuestas viejas si el usuario siguió cambiando los criterios
+    let active = true;
+    setLoading(true);
+
+    const params: Record<string, string> = {
+      ...filtersToParams(debouncedFilters),
+      ...(debouncedName ? { name: debouncedName } : {}),
     };
 
-    fetchCards();
-  }, [debouncedQuery]);
+    apiClient
+      .get<{ cards: CatalogCard[] }>('/cards', {
+        params: Object.keys(params).length > 0 ? params : undefined,
+      })
+      .then(({ data }) => {
+        if (!active) return;
+        setCards(data.cards);
+        setError(null);
+      })
+      .catch((e: any) => {
+        if (!active) return;
+        setCards([]);
+        setError(parseApiError(e));
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [debouncedName, debouncedFilters]);
 
   return (
-    <View style={styles.container}>
-      <View style={styles.searchContainer}>
-        <TextInput
-          style={styles.input}
-          placeholder="Buscar carta por nombre..."
-          placeholderTextColor="#8d99ae"
-          value={query}
-          onChangeText={setQuery}
-          autoCorrect={false}
-        />
-      </View>
+    <View style={styles.root}>
+      <TextInput
+        style={styles.input}
+        placeholder="Buscar carta por nombre"
+        placeholderTextColor="#8d99ae"
+        autoCapitalize="none"
+        autoCorrect={false}
+        returnKeyType="search"
+        value={query}
+        onChangeText={setQuery}
+      />
 
-      {error && <Text style={styles.errorText}>{error}</Text>}
-
-      {loading ? (
-        <ActivityIndicator size="large" color="#e94560" style={styles.loader} />
-      ) : (
-        <FlatList
-          data={cards}
-          keyExtractor={(item) => item.id || item.name}
-          contentContainerStyle={styles.listContent}
-          renderItem={({ item }) => (
-            <View style={styles.cardWrapper}>
-              <CardView
-                card={{
-                  name: item.name,
-                  element: item.element,
-                  hp: item.hp || 100, // Valor por defecto si no viene del backend
-                  maxHp: item.maxHp || 100,
-                  attack: item.attack,
-                  manaCost: item.manaCost || 0,
-                }}
-              />
-            </View>
-          )}
-          ListEmptyComponent={
-            <Text style={styles.emptyText}>
-              {debouncedQuery ? 'No se encontraron cartas con ese nombre.' : 'El catálogo está vacío.'}
+      <FlatList
+        data={cards}
+        keyExtractor={c => String(c.id)}
+        contentContainerStyle={styles.list}
+        keyboardShouldPersistTaps="handled"
+        ListHeaderComponent={
+          <View>
+            <CardFilters value={filters} onChange={setFilters} />
+            {loading ? (
+              <ActivityIndicator size="small" color="#e94560" style={styles.loader} />
+            ) : !error && cards.length > 0 ? (
+              <Text style={styles.counter}>
+                {cards.length} {cards.length === 1 ? 'carta' : 'cartas'}
+              </Text>
+            ) : null}
+          </View>
+        }
+        ListEmptyComponent={
+          loading ? undefined : (
+            <Text style={styles.empty}>
+              {error ??
+                (hasCriteria ? 'No se encontraron cartas con esos criterios.' : 'No hay cartas en el catálogo.')}
             </Text>
-          }
-        />
-      )}
+          )
+        }
+        renderItem={({ item }) => <CardView card={fromCatalog(item)} style={styles.card} />}
+      />
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#1a1a2e', padding: 16 },
-  searchContainer: { marginBottom: 16 },
+  root: { flex: 1, backgroundColor: '#1a1a2e' },
   input: {
     backgroundColor: '#16213e',
     color: '#fff',
-    padding: 12,
-    borderRadius: 8,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: '#0f3460',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    margin: 16,
+    marginBottom: 4,
     fontSize: 16,
   },
-  cardWrapper: { marginBottom: 12 },
-  listContent: { paddingBottom: 24 },
-  loader: { marginTop: 32 },
-  errorText: { color: '#e94560', textAlign: 'center', marginBottom: 12 },
-  emptyText: { color: '#8d99ae', textAlign: 'center', marginTop: 32, fontSize: 16 },
+  loader: { marginVertical: 12 },
+  list: { padding: 16, paddingBottom: 32 },
+  counter: { color: '#8d99ae', fontSize: 13, marginBottom: 12, textAlign: 'center' },
+  empty: { color: '#8d99ae', fontSize: 15, textAlign: 'center', marginTop: 60, lineHeight: 22 },
+  card: { marginBottom: 12 },
 });

@@ -61,7 +61,7 @@ export const MatchmakingScreen = () => {
       timeoutRef.current = setTimeout(() => {
         navigation.replace('MatchScreen', {
           matchId: data.matchId,
-          opponent: data.opponent,
+          opponent: { ...data.opponent, userId: String(data.opponent.userId) }
         });
       }, 1500);
     });

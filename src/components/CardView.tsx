@@ -1,4 +1,5 @@
 import React from 'react';
+import { CatalogCard, RARITY_LABEL, Rarity } from '../types/cards';
 import { StyleProp, StyleSheet, Text, TouchableOpacity, View, ViewStyle } from 'react-native';
 
 export const elementColor = (element: string): string => {
@@ -18,15 +19,52 @@ export const elementColor = (element: string): string => {
   }
 };
 
+// ARK-009: color de la rareza
+export const rarityColor = (rarity?: string): string => {
+  switch (rarity) {
+    case 'RARA':
+      return '#4cc9f0';
+    case 'EPICA':
+      return '#b5179e';
+    case 'LEGENDARIA':
+      return '#f4a261';
+    default:
+      return '#8d99ae';
+  }
+};
+
+// Lo que necesita mostrar una carta (una BattleCard del servidor ya cumple esta forma)
 export interface CardLike {
   name: string;
   element: string;
+  rarity?: string;
   hp: number;
   maxHp: number;
   attack: number;
-  manaCost: number;
+  defense: number;
+  speed: number;
+  mana: number;
+  skillName: string;
+  skillManaCost: number;
+  skillPower: number;
   fainted?: boolean;
 }
+
+// Carta del catálogo (API, snake_case) -> forma que dibuja CardView
+export const fromCatalog = (c: CatalogCard): CardLike => ({
+  name: c.name,
+  element: c.element,
+  rarity: c.rarity,
+  hp: c.hp,
+  maxHp: c.hp,
+  attack: c.attack,
+  defense: c.defense,
+  speed: c.speed,
+  mana: c.mana,
+  skillName: c.skill_name,
+  skillManaCost: c.skill_mana_cost,
+  skillPower: c.skill_power,
+});
 
 interface Props {
   card: CardLike;
@@ -57,6 +95,12 @@ export const CardView = ({ card, compact = false, selected = false, disabled = f
         )}
       </View>
 
+      {!compact && card.rarity && (
+        <Text style={[styles.rarity, { color: rarityColor(card.rarity) }]}>
+          ★ {RARITY_LABEL[card.rarity as Rarity] ?? card.rarity}
+        </Text>
+      )}
+
       <View style={styles.hpTrack}>
         <View style={[styles.hpFill, { width: widthPct, backgroundColor: hpColor(ratio) }]} />
       </View>
@@ -66,8 +110,15 @@ export const CardView = ({ card, compact = false, selected = false, disabled = f
 
       <View style={styles.statsRow}>
         <Text style={[styles.stat, compact && styles.statCompact]}>⚔️ {card.attack}</Text>
-        <Text style={[styles.stat, compact && styles.statCompact]}>🧪 {card.manaCost}</Text>
+        <Text style={[styles.stat, compact && styles.statCompact]}>🛡️ {card.defense}</Text>
+        <Text style={[styles.stat, compact && styles.statCompact]}>💨 {card.speed}</Text>
+        {!compact && <Text style={styles.stat}>🧪 {card.mana}</Text>}
       </View>
+      {!compact && (
+        <Text style={styles.skill}>
+          ✨ {card.skillName} · poder {card.skillPower} · {card.skillManaCost} maná
+        </Text>
+      )}
     </>
   );
 
@@ -114,4 +165,6 @@ const styles = StyleSheet.create({
   statsRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 },
   stat: { color: '#bdc3c7', fontSize: 14 },
   statCompact: { fontSize: 10 },
+  skill: { color: '#e9c46a', fontSize: 12, marginTop: 6 },
+  rarity: { fontSize: 12, fontWeight: 'bold', marginTop: 4 },
 });

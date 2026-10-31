@@ -13,7 +13,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuthStore } from '../store/useAuthStore';
 import { RootStackParamList } from '../navigation/types';
 import { useMatchSocket } from '../hooks/useMatchSocket';
-import { PicksPhase } from './match/PickPhase';
+import { PickPhase } from './match/PickPhase';
 import { BattlePhase } from './match/BattlePhase';
 
 export const MatchScreen = () => {
@@ -67,7 +67,7 @@ export const MatchScreen = () => {
     );
   } else if (view.status === 'PICKING') {
     content = (
-      <PicksPhase
+      <PickPhase 
         view={view}
         opponentName={opponentName}
         errorKey={error?.key ?? 0}
